@@ -125,7 +125,7 @@ def retrieve_files(
         return changed_files
     except Exception as e:
         print(f"Error retrieving files: {e}")
-        return []
+        sys.exit(19)
 
 
 def upload_file(file_path: Path, repo_path: str, commit_id: str = None) -> Dict:
