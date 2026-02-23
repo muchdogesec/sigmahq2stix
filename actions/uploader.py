@@ -575,7 +575,6 @@ def main():
         print(f"\n{'=' * 60}")
         print("Uploading Files")
         print("=" * 60)
-        1/0
 
 
         upload_results = []
