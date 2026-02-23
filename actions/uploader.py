@@ -607,10 +607,6 @@ def main():
                 if set(["unsupported", "deprecated"]).isdisjoint(f.parts)
             ]  # Filter out unsupported directory
 
-        if not files_to_process:
-            print("\nNo YAML files found. Nothing to upload.")
-            save_artifacts([], [], "artifacts")
-            return
         # files_to_process = files_to_process[
         #     :6
         # ]  # Limit to first 10 files for processing
@@ -622,6 +618,11 @@ def main():
         else:
             current_commit_sha = repo.head.commit.hexsha
         print(f"Current commit to save: {current_commit_sha}")
+
+        if not files_to_process:
+            print("\nNo YAML files found. Nothing to upload.")
+            save_artifacts([], [], "artifacts", current_commit_sha=current_commit_sha)
+            return
 
         # Step 2: Upload files
         print(f"\n{'=' * 60}")

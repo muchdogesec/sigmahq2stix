@@ -11,6 +11,9 @@ on:
         description: 'End commit SHA (defaults to HEAD if not provided)'
         required: false
         type: string
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  
 
 jobs:
   upload-rules:
