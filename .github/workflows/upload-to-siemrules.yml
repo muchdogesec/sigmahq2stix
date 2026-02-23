@@ -15,6 +15,7 @@ on:
 jobs:
   upload-rules:
     runs-on: ubuntu-latest
+    environment: env-secrets
     
     steps:
       - name: Checkout repository

@@ -27,6 +27,9 @@ GITHUB_REPO_URL = (
     + "/"
 )  # External repository URL to clone
 SIEMRULES_BASE_URL = os.environ.get("SIEMRULES_BASE_URL") # Base URL for SIEMRULES API, e.g. "https://api.siemrules.com"
+if not SIEMRULES_BASE_URL:
+    print("ERROR: SIEMRULES_BASE_URL environment variable not set")
+    sys.exit(1)
 SIEMRULES_API_KEY = os.environ.get("SIEMRULES_API_KEY")
 DETECTION_PACK_ID = os.environ.get("DETECTION_PACK_ID")  # Optional: Detection pack to add rules to
 PROCESS_DEPRECATED = os.environ.get("PROCESS_DEPRECATED", "false").lower() in ["true", "1", "y", "yes"]  # Whether to process rules in 'deprecated' directory
