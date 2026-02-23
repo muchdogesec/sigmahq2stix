@@ -422,48 +422,56 @@ def save_artifacts(succeeded: List[Dict], failed: List[Dict], output_dir: str = 
         json.dump(badge_data, f, indent=2)
     print(f"✓ Saved badge data to {badges_file}")
 
+
+def write_github_summary(succeeded: List[Dict], failed: List[Dict], detection_pack_success: bool = None):
     # Write GitHub Action summary if available
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary_file:
-        with open(summary_file, "a") as f:
-            f.write("# SIEMRULES Upload Summary\n\n")
-            f.write(f"## Results\n\n")
-            f.write(f"- ✅ **Succeeded**: {len(succeeded)}\n")
-            f.write(f"- ❌ **Failed**: {len(failed)}\n")
-            f.write(f"- 📊 **Total**: {len(succeeded) + len(failed)}\n\n")
+    if not summary_file:
+        print("No GITHUB_STEP_SUMMARY environment variable found, skipping summary write")
+        return
+    with open(summary_file, "a") as f:
+        f.write("# SIEMRULES Upload Summary\n\n")
+        f.write(f"## Results\n\n")
+        f.write(f"- ✅ **Succeeded**: {len(succeeded)}\n")
+        f.write(f"- ❌ **Failed**: {len(failed)}\n")
+        f.write(f"- 📊 **Total**: {len(succeeded) + len(failed)}\n\n")
 
-            if succeeded:
-                f.write("### ✅ Succeeded Jobs\n\n")
-                for job in succeeded[:10]:  # Show first 10
-                    file_name = job.get("source_url", "unknown").rpartition("/")[-1]
-                    job_id = job.get("id", "N/A")
-                    f.write(f"- `{file_name}` (Job ID: `{job_id}`)\n")
-                if len(succeeded) > 10:
-                    f.write(f"\n_... and {len(succeeded) - 10} more_\n")
-                f.write("\n")
+        if succeeded:
+            f.write("### ✅ Succeeded Jobs\n\n")
+            f.write("| File | Job ID |\n")
+            f.write("|------|--------|\n")
+            for job in succeeded[:10]:  # Show first 10
+                file_name = job.get("source_url", "unknown").rpartition("/")[-1]
+                job_id = job.get("id", "N/A")
+                f.write(f"| `{file_name}` | `{job_id}` |\n")
+            if len(succeeded) > 10:
+                f.write(f"\n_... and {len(succeeded) - 10} more_\n")
+            f.write("\n")
 
-            if failed:
-                f.write("### ❌ Failed Jobs\n\n")
-                for job in failed[:10]:  # Show first 10
-                    file_name = job.get("source_url", "unknown").rpartition("/")[-1]
-                    error = job.get("error", "Unknown error")
-                    f.write(f"- `{file_name}`: {error}\n")
-                if len(failed) > 10:
-                    f.write(f"\n_... and {len(failed) - 10} more_\n")
-                f.write("\n")
+        if failed:
+            f.write("### ❌ Failed Jobs\n\n")
+            f.write("| File | Error |\n")
+            f.write("|------|-------|\n")
+            for job in failed[:10]:  # Show first 10
+                file_name = job.get("source_url", "unknown").rpartition("/")[-1]
+                error = job.get("error", "Unknown error")[:100]  # Truncate long errors
+                f.write(f"| `{file_name}` | {error} |\n")
+            if len(failed) > 10:
+                f.write(f"\n_... and {len(failed) - 10} more_\n")
+            f.write("\n")
 
-            f.write(f"## Artifacts\n\n")
-            f.write(f"- 📄 Succeeded jobs: `succeeded_jobs.json`\n")
-            f.write(f"- 📄 Failed jobs: `failed_jobs.json`\n\n")
-            
-            if detection_pack_success is not None:
-                f.write(f"## Detection Pack\n\n")
-                if detection_pack_success:
-                    f.write(f"✅ Successfully added {len(succeeded)} rules to detection pack\n")
-                else:
-                    f.write(f"❌ Failed to add rules to detection pack\n")
+        f.write(f"## Artifacts\n\n")
+        f.write(f"- 📄 Succeeded jobs: `succeeded_jobs.json`\n")
+        f.write(f"- 📄 Failed jobs: `failed_jobs.json`\n\n")
+        
+        if detection_pack_success is not None:
+            f.write(f"## Detection Pack\n\n")
+            if detection_pack_success:
+                f.write(f"✅ Successfully added {len(succeeded)} rules to detection pack\n")
+            else:
+                f.write(f"❌ Failed to add rules to detection pack\n")
 
-        print(f"✓ Updated GitHub Action summary")
+    print(f"✓ Updated GitHub Action summary")
 
 
 def parse_args():
@@ -611,7 +619,7 @@ def main():
         print(f"\n{'=' * 60}")
         print("Saving Artifacts")
         print("=" * 60)
-
+        write_github_summary(succeeded, failed, detection_pack_success)
         save_artifacts(succeeded, failed, "artifacts", detection_pack_success, current_commit_sha)
 
         # Step 6: Save current commit SHA as last processed commit
