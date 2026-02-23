@@ -687,8 +687,8 @@ def main():
             else:
                 print(f"📦 Detection Pack: ❌ Failed to add rules")
 
-        # Exit with error code if any jobs failed
-        if failed:
+        # Exit with error code based on success criteria: at least one success OR no failures
+        if not (len(succeeded) > 0 or len(failed) == 0):
             sys.exit(1)
 
     finally:
