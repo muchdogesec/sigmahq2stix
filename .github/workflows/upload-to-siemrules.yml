@@ -35,11 +35,14 @@ jobs:
           pip install -r requirements.txt
 
       - name: Download previous commit artifact
-        uses: actions/download-artifact@v4
+        uses: dawidd6/action-download-artifact@v3
         with:
           name: last-commit-sha
           path: artifacts/
-        continue-on-error: true
+          workflow: upload-to-siemrules.yml
+          workflow_conclusion: success
+          if_no_artifact_found: ignore
+          allow_forks: false
 
       - name: Upload changed rules to SIEMRULES
         env:
