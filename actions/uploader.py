@@ -26,13 +26,22 @@ GITHUB_REPO_URL = (
     os.environ.get("GITHUB_REPO_URL", "https://github.com/SigmaHQ/sigma").strip("/")
     + "/"
 )  # External repository URL to clone
-SIEMRULES_BASE_URL = os.environ.get("SIEMRULES_BASE_URL") # Base URL for SIEMRULES API, e.g. "https://api.siemrules.com"
+SIEMRULES_BASE_URL = os.environ.get(
+    "SIEMRULES_BASE_URL"
+)  # Base URL for SIEMRULES API, e.g. "https://api.siemrules.com"
 if not SIEMRULES_BASE_URL:
     print("ERROR: SIEMRULES_BASE_URL environment variable not set")
     sys.exit(1)
 SIEMRULES_API_KEY = os.environ.get("SIEMRULES_API_KEY")
-DETECTION_PACK_ID = os.environ.get("DETECTION_PACK_ID")  # Optional: Detection pack to add rules to
-PROCESS_DEPRECATED = os.environ.get("PROCESS_DEPRECATED", "false").lower() in ["true", "1", "y", "yes"]  # Whether to process rules in 'deprecated' directory
+DETECTION_PACK_ID = os.environ.get(
+    "DETECTION_PACK_ID"
+)  # Optional: Detection pack to add rules to
+PROCESS_DEPRECATED = os.environ.get("PROCESS_DEPRECATED", "false").lower() in [
+    "true",
+    "1",
+    "y",
+    "yes",
+]  # Whether to process rules in 'deprecated' directory
 
 MAX_WORKERS = int(os.environ.get("MAX_WORKERS", "10"))
 STATUS_CHECK_INTERVAL = int(os.environ.get("STATUS_CHECK_INTERVAL", "10"))
@@ -53,14 +62,17 @@ def get_team_id() -> str:
     url = f"{SIEMRULES_BASE_URL}/v1/team/"
     headers = {"API-KEY": SIEMRULES_API_KEY}
     response = requests.get(url, headers=headers, timeout=10)
-    return "identity--"+ response.json()['details']['id']
+    return "identity--" + response.json()["details"]["id"]
+
 
 IDENTITY_ID = get_team_id()
 print(f"Retrieved team identity ID: {IDENTITY_ID}")
 
+
 def calculate_rule_id(orig_id: str) -> str:
     NAMESPACE = uuid.UUID("8ef05850-cb0d-51f7-80be-50e4376dbe63")
-    return "indicator--"+str(uuid.uuid5(NAMESPACE, f"{orig_id}+{IDENTITY_ID}"))
+    return "indicator--" + str(uuid.uuid5(NAMESPACE, f"{orig_id}+{IDENTITY_ID}"))
+
 
 def rule_exists(orig_id: str, rule) -> bool:
     indicator_id = calculate_rule_id(orig_id)
@@ -70,7 +82,9 @@ def rule_exists(orig_id: str, rule) -> bool:
     return indicator_id, response.ok
 
 
-def retrieve_files(repo_path: str, start_commit: str = None, end_commit: str = None) -> List[Path]:
+def retrieve_files(
+    repo_path: str, start_commit: str = None, end_commit: str = None
+) -> List[Path]:
     """
     Gets .yml/.yaml files from repo.
     If start_commit is provided, gets files changed between start_commit and end_commit (or HEAD).
@@ -86,10 +100,14 @@ def retrieve_files(repo_path: str, start_commit: str = None, end_commit: str = N
     """
     try:
         repo = Repo(repo_path)
-        end_ref = repo.commit(end_commit or "HEAD")  # Ensure we have a commit object for end_ref
+        end_ref = repo.commit(
+            end_commit or "HEAD"
+        )  # Ensure we have a commit object for end_ref
 
         # Mode 1: Diff from start_commit to end_commit
-        print(f"Retrieving files changed from commit {start_commit} to {end_commit or 'HEAD'}")
+        print(
+            f"Retrieving files changed from commit {start_commit} to {end_commit or 'HEAD'}"
+        )
         diffs = end_ref.diff(start_commit)
 
         changed_files = []
@@ -133,17 +151,23 @@ def upload_file(file_path: Path, repo_path: str, commit_id: str = None) -> Dict:
         data = yaml.safe_load(
             file_path.open("r")
         )  # Validate YAML format before uploading
-        data.setdefault('references', []).append(source_url)  # Add source URL to references
-        for k in ['date', 'modified']:
+        data.setdefault("references", []).append(
+            source_url
+        )  # Add source URL to references
+        for k in ["date", "modified"]:
             if isinstance(data.get(k), str):
-                data[k] = data[k].replace("/", "-")  # Replace slashes in date to avoid issues
+                data[k] = data[k].replace(
+                    "/", "-"
+                )  # Replace slashes in date to avoid issues
 
-        indicator_id, exists = rule_exists(data['id'], data)
+        indicator_id, exists = rule_exists(data["id"], data)
         response = None
-        if exists: # modify existing rule
+        if exists:  # modify existing rule
             url = f"{SIEMRULES_BASE_URL}/v1/base-rules/{indicator_id}/modify/yml/"
-            print(f"  ⚠️ Rule with ID {data['id']} already exists ({indicator_id}). Attempting to modify existing rule.")
-            for key in ['id', 'author', 'date', 'modified']:
+            print(
+                f"  ⚠️ Rule with ID {data['id']} already exists ({indicator_id}). Attempting to modify existing rule."
+            )
+            for key in ["id", "author", "date", "modified"]:
                 data.pop(key, None)  # Remove keys if they exist to avoid conflicts
         data_str = yaml.dump(data)  # Convert back to string for upload
         response = requests.post(url, headers=headers, data=data_str, timeout=30)
@@ -159,8 +183,14 @@ def upload_file(file_path: Path, repo_path: str, commit_id: str = None) -> Dict:
         return result
 
     except Exception as e:
-        print(f"  ✗ Upload failed for {file_path.name}: {str(e)[:200]}")  # Truncate error message for readability
-        return {"source_url": source_url, "error": str(e), "status": "upload_failed"}
+        print(
+            f"  ✗ Upload failed for {file_path.name}: {str(e)[:200]}"
+        )  # Truncate error message for readability
+        return {
+            "source_url": source_url,
+            "error": f"{type(e)}: {str(e)[:200]}",
+            "status": "upload_failed",
+        }
 
 
 def check_job_status(job_id: str) -> Dict:
@@ -322,46 +352,47 @@ def load_last_commit(input_file: str) -> str:
     return None
 
 
-def add_rules_to_detection_pack(succeeded_jobs: List[Dict], detection_pack_id: str) -> bool:
+def add_rules_to_detection_pack(
+    succeeded_jobs: List[Dict], detection_pack_id: str
+) -> bool:
     """
     Adds successfully uploaded rules to a detection pack
-    
+
     Args:
         succeeded_jobs: List of successful job results
         detection_pack_id: ID of the detection pack to add rules to
-        
+
     Returns:
         True if successful, False otherwise
     """
     if not succeeded_jobs:
         print("No successful jobs to add to detection pack")
         return True
-    
+
     # Extract file_ids from successful jobs
     rule_ids = []
     for job in succeeded_jobs:
-        job = job.get('metadata', job)
-        if job.get('file_id'):
-            rule_ids.append(job['file_id'])
-        elif job.get('extra') and job['extra'].get('indicator_id'):
-            rule_ids.append(job['extra']['indicator_id'].rpartition("--")[-1])  # Extract rule ID from indicator ID
-    
+        job = job.get("metadata", job)
+        if job.get("file_id"):
+            rule_ids.append(job["file_id"])
+        elif job.get("extra") and job["extra"].get("indicator_id"):
+            rule_ids.append(
+                job["extra"]["indicator_id"].rpartition("--")[-1]
+            )  # Extract rule ID from indicator ID
+
     if not rule_ids:
         print("No valid file_ids found in successful jobs")
         return False
-    
+
     print(f"Adding {len(rule_ids)} rules to detection pack {detection_pack_id}")
-    
+
     url = f"{SIEMRULES_BASE_URL}/v1/detection-packs/{detection_pack_id}/add-rules/"
-    headers = {
-        'API-KEY': SIEMRULES_API_KEY,
-        'Content-Type': 'application/json'
-    }
+    headers = {"API-KEY": SIEMRULES_API_KEY, "Content-Type": "application/json"}
     payload = {"rule_ids": rule_ids}
-    
+
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=30)
-        
+
         if response.ok:
             print(f"✓ Successfully added {len(rule_ids)} rules to detection pack")
             return True
@@ -370,13 +401,19 @@ def add_rules_to_detection_pack(succeeded_jobs: List[Dict], detection_pack_id: s
             print(f"  Status Code: {response.status_code}")
             print(f"  Response: {response.text}")
             return False
-            
+
     except Exception as e:
         print(f"✗ Exception while adding rules to detection pack: {e}")
         return False
 
 
-def save_artifacts(succeeded: List[Dict], failed: List[Dict], output_dir: str = ".", detection_pack_success: bool = None, commit_sha: str = None):
+def save_artifacts(
+    succeeded: List[Dict],
+    failed: List[Dict],
+    output_dir: str = ".",
+    detection_pack_success: bool = None,
+    commit_sha: str = None,
+):
     """
     Saves results to artifact files and writes GitHub Action summary
 
@@ -409,25 +446,29 @@ def save_artifacts(succeeded: List[Dict], failed: List[Dict], output_dir: str = 
             "schemaVersion": 1,
             "label": "last commit",
             "message": commit_sha[:7] if commit_sha else "unknown",
-            "color": "blue"
+            "color": "blue",
         },
         "results": {
             "schemaVersion": 1,
             "label": "rules",
             "message": f"{len(succeeded)} passed | {len(failed)} failed",
-            "color": "red" if failed else "green"
-        }
+            "color": "red" if failed else "green",
+        },
     }
     with open(badges_file, "w") as f:
         json.dump(badge_data, f, indent=2)
     print(f"✓ Saved badge data to {badges_file}")
 
 
-def write_github_summary(succeeded: List[Dict], failed: List[Dict], detection_pack_success: bool = None):
+def write_github_summary(
+    succeeded: List[Dict], failed: List[Dict], detection_pack_success: bool = None
+):
     # Write GitHub Action summary if available
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
-        print("No GITHUB_STEP_SUMMARY environment variable found, skipping summary write")
+        print(
+            "No GITHUB_STEP_SUMMARY environment variable found, skipping summary write"
+        )
         return
     with open(summary_file, "a") as f:
         f.write("# SIEMRULES Upload Summary\n\n")
@@ -463,11 +504,13 @@ def write_github_summary(succeeded: List[Dict], failed: List[Dict], detection_pa
         f.write(f"## Artifacts\n\n")
         f.write(f"- 📄 Succeeded jobs: `succeeded_jobs.json`\n")
         f.write(f"- 📄 Failed jobs: `failed_jobs.json`\n\n")
-        
+
         if detection_pack_success is not None:
             f.write(f"## Detection Pack\n\n")
             if detection_pack_success:
-                f.write(f"✅ Successfully added {len(succeeded)} rules to detection pack\n")
+                f.write(
+                    f"✅ Successfully added {len(succeeded)} rules to detection pack\n"
+                )
             else:
                 f.write(f"❌ Failed to add rules to detection pack\n")
 
@@ -476,21 +519,19 @@ def write_github_summary(succeeded: List[Dict], failed: List[Dict], detection_pa
 
 def parse_args():
     """Parse command line arguments"""
-    parser = argparse.ArgumentParser(
-        description="Upload Sigma rules to SIEMRULES API"
-    )
+    parser = argparse.ArgumentParser(description="Upload Sigma rules to SIEMRULES API")
     parser.add_argument(
         "--start-commit",
         help="Start commit SHA (defaults to last_commit_id or empty tree if not available)",
-        default=None
+        default=None,
     )
     parser.add_argument(
         "--end-commit",
         help="End commit SHA (defaults to HEAD if not provided)",
-        default=None
+        default=None,
     )
     args = parser.parse_args()
-        
+
     # Determine start_commit (with default logic)
     if not args.start_commit:
         # Try to load last commit from file
@@ -502,7 +543,7 @@ def parse_args():
             # Default to empty tree (will diff from beginning)
             args.start_commit = EMPTY_TREE_SHA
             print(f"No last commit found, using empty tree: {args.start_commit}")
-    
+
     # Determine end_commit (defaults to HEAD)
     args.end_commit = args.end_commit or "HEAD"
     return args
@@ -511,7 +552,7 @@ def parse_args():
 def main():
     """Main execution function"""
     args = parse_args()
-    
+
     print("=" * 60)
     print("SIEMRULES Uploader")
     print("=" * 60)
@@ -548,7 +589,6 @@ def main():
                 shutil.rmtree(temp_dir)
             sys.exit(1)
 
-
     print(f"\nConfiguration:")
     print(f"  Repository: {repo_path}")
     print(f"  Start Commit: {args.start_commit}")
@@ -561,7 +601,11 @@ def main():
         # Step 1: Retrieve files
         files_to_process = retrieve_files(repo_path, args.start_commit, args.end_commit)
         if not PROCESS_DEPRECATED:
-            files_to_process = [f for f in files_to_process if set(['unsupported', 'deprecated']).isdisjoint(f.parts)]  # Filter out unsupported directory
+            files_to_process = [
+                f
+                for f in files_to_process
+                if set(["unsupported", "deprecated"]).isdisjoint(f.parts)
+            ]  # Filter out unsupported directory
 
         if not files_to_process:
             print("\nNo YAML files found. Nothing to upload.")
@@ -583,7 +627,6 @@ def main():
         print(f"\n{'=' * 60}")
         print("Uploading Files")
         print("=" * 60)
-
 
         upload_results = []
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -611,16 +654,20 @@ def main():
             print(f"\n{'=' * 60}")
             print("Adding Rules to Detection Pack")
             print("=" * 60)
-            detection_pack_success = add_rules_to_detection_pack(succeeded, DETECTION_PACK_ID)
+            detection_pack_success = add_rules_to_detection_pack(
+                succeeded, DETECTION_PACK_ID
+            )
         elif DETECTION_PACK_ID:
             print(f"\nSkipping detection pack addition (no successful uploads)")
-        
+
         # Step 5: Save artifacts
         print(f"\n{'=' * 60}")
         print("Saving Artifacts")
         print("=" * 60)
         write_github_summary(succeeded, failed, detection_pack_success)
-        save_artifacts(succeeded, failed, "artifacts", detection_pack_success, current_commit_sha)
+        save_artifacts(
+            succeeded, failed, "artifacts", detection_pack_success, current_commit_sha
+        )
 
         # Step 6: Save current commit SHA as last processed commit
         save_last_commit(current_commit_sha, LAST_COMMIT_FILE)
@@ -634,7 +681,9 @@ def main():
         print(f"📊 Total: {len(succeeded) + len(failed)}")
         if detection_pack_success is not None:
             if detection_pack_success:
-                print(f"📦 Detection Pack: ✅ Successfully added {len(succeeded)} rules")
+                print(
+                    f"📦 Detection Pack: ✅ Successfully added {len(succeeded)} rules"
+                )
             else:
                 print(f"📦 Detection Pack: ❌ Failed to add rules")
 
