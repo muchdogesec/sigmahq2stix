@@ -1,0 +1,115 @@
+name: Upload Changed Rules to SIEMRULES
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_commit:
+        description: 'Start commit SHA (defaults to last_commit_id or empty tree if not available)'
+        required: false
+        type: string
+      end_commit:
+        description: 'End commit SHA (defaults to HEAD if not provided)'
+        required: false
+        type: string
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  
+
+jobs:
+  upload-rules:
+    runs-on: ubuntu-latest
+    environment: env-secrets
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for git diff
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download previous commit artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: last-commit-sha
+          path: artifacts/
+          workflow: upload-to-siemrules.yml
+          workflow_conclusion: success
+          if_no_artifact_found: ignore
+          allow_forks: false
+
+      - name: Upload changed rules to SIEMRULES
+        env:
+          SIEMRULES_BASE_URL: ${{ secrets.SIEMRULES_BASE_URL }}
+          SIEMRULES_API_KEY: ${{ secrets.SIEMRULES_API_KEY }}
+          DETECTION_PACK_ID: ${{ secrets.DETECTION_PACK_ID }}
+          MAX_WORKERS: '10'
+          STATUS_CHECK_INTERVAL: '5'
+          MAX_STATUS_CHECKS: '60'
+        run: |
+          # Build command with optional arguments
+          CMD="python actions/uploader.py"
+          
+          if [ -n "${{ github.event.inputs.start_commit }}" ]; then
+            CMD="$CMD --start-commit '${{ github.event.inputs.start_commit }}'"
+          fi
+          
+          if [ -n "${{ github.event.inputs.end_commit }}" ]; then
+            CMD="$CMD --end-commit '${{ github.event.inputs.end_commit }}'"
+          fi
+          
+          echo "Running: $CMD"
+          eval $CMD
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: siemrules-upload-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/
+          retention-days: 7
+
+      - name: Upload badges
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: siemrules-badges
+          path: artifacts/badges.json
+          retention-days: 90
+          overwrite: true
+
+      - name: Upload last commit SHA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: last-commit-sha
+          path: artifacts/last_commit.txt
+          retention-days: 90
+          overwrite: true
+
+      - name: Display badges
+        if: always()
+        run: |
+          if [ -f artifacts/badges.json ]; then
+            echo "## Status Badges" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Extract badge data
+            LAST_COMMIT=$(jq -r '.last_commit.message' artifacts/badges.json)
+            RESULTS=$(jq -r '.results.message' artifacts/badges.json)
+            RESULTS_COLOR=$(jq -r '.results.color' artifacts/badges.json)
+            
+            echo "![Last Commit](https://img.shields.io/badge/last_commit-${LAST_COMMIT}-blue)" >> $GITHUB_STEP_SUMMARY
+            echo "![Results](https://img.shields.io/badge/rules-${RESULTS// /%20}-${RESULTS_COLOR})" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
