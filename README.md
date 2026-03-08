@@ -1,16 +1,12 @@
-# sigma2stix
-
-## Overview
-
-![](docs/sigma2stix.png)
-
-A command line tool that converts Sigma Rules into STIX 2.1 Objects
+# sigmahq2stix
 
 ## tl;dr
 
-[![sigma2stix](https://img.youtube.com/vi/xDA1zVR8LQA/0.jpg)](https://www.youtube.com/watch?v=xDA1zVR8LQA)
+![](docs/sigmahq2stix.png)
 
-[Watch the demo](https://www.youtube.com/watch?v=xDA1zVR8LQA).
+A command line tool that converts Sigma Rules from the SigmaHQ repository into STIX 2.1 Objects.
+
+This repository also contains GitHub actions to upload the rules to SIEM Rules (also creating detection packs) and Cyber Threat Exchange (to a SigmaHQ feed)
 
 ## Overview
 
@@ -26,33 +22,33 @@ The public rules (approved by the Sigma team) are stored in the main Sigma repos
 
 https://github.com/SigmaHQ/sigma/blob/master/rules-emerging-threats/2023/Exploits/CVE-2023-20198/cisco_syslog_cve_2023_20198_ios_xe_web_ui.yml
 
-Here at DOGESEC, most of the data we deal with is in STIX 2.1 format. This is because downstream threat intelligence tools understand STIX.
+Here at dogesec, most of the data we deal with is in STIX 2.1 format. This is because downstream threat intelligence tools understand STIX.
 
-Therefore sigma2stix works by converting Sigma Rules to STIX 2.1 objects.
+Therefore sigmahq2stix works by converting Sigma Rules to STIX 2.1 objects.
 
-sigma2stix provides two modes:
+sigmahq2stix provides two modes:
 
 1. downloads the latest rules from the [SigmaHQ/sigma repository](https://github.com/SigmaHQ/sigma) and converts each rule into a range of STIX objects
 2. accepts a Sigma rule in a YAML file and converts to a STIX indicator object
 
 ## Installing the script
 
-To install sigma2stix;
+To install sigmahq2stix;
 
 ```shell
 # clone the latest code
-git clone https://github.com/muchdogesec/sigma2stix
+git clone https://github.com/muchdogesec/sigmahq2stix
 # create a venv
-cd sigma2stix
-python3 -m venv sigma2stix-venv
-source sigma2stix-venv/bin/activate
+cd sigmahq2stix
+python3 -m venv sigmahq2stix-venv
+source sigmahq2stix-venv/bin/activate
 # install requirements
 pip3 install -r requirements.txt
 ```
 
 ### Configuration options
 
-sigma2stix has various settings that are defined in an `.env` file.
+sigmahq2stix has various settings that are defined in an `.env` file.
 
 To create a template for the file:
 
@@ -62,13 +58,12 @@ cp .env.example .env
 
 To see more information about how to set the variables, and what they do, read the `.env.markdown` file.
 
-
 ## Running the script
 
 ### Mode 1: SigmaHQ/sigma repository -> STIX
 
 ```shell
-python3 sigma2stix.py \
+python3 sigmahq2stix.py \
 	--mode sigmahq \
 	--sigma_version_tag XXXX
 ```
@@ -85,14 +80,14 @@ On each run all objects will be regenerated in the `stix2_objects` directory
 #### Example 1.1: Download latest (master)
 
 ```shell
-python3 sigma2stix.py \
+python3 sigmahq2stix.py \
 	--mode sigmahq
 ```
 
 #### Example 1.2: Download specific version
 
 ```shell
-python3 sigma2stix.py \
+python3 sigmahq2stix.py \
 	--mode sigmahq \
 	--sigma_version_tag r2024-12-19
 ```
@@ -100,7 +95,7 @@ python3 sigma2stix.py \
 ### Mode 2: SigmaHQ YAML file -> STIX
 
 ```shell
-python3 sigma2stix.py \
+python3 sigmahq2stix.py \
 	--mode sigmayaml \
 	--file PATH/TO/FILE.yaml
 ```
@@ -115,14 +110,14 @@ On each run all objects will be regenerated in the `stix2_objects` directory
 #### Example 2.1: Convert a local rule
 
 ```shell
-python3 sigma2stix.py \
+python3 sigmahq2stix.py \
 	--mode sigmayaml \
 	--file tests/demo_rule.yml
 ```
 
 ## Mapping information
 
-Here is how sigma2stix maps data to STIX objects from each Sigma Rules YAML.
+Here is how sigmahq2stix maps data to STIX objects from each Sigma Rules YAML.
 
 Note, the Sigma specification defines the attributes that can be found in the YAML files, and some of the taxonomies used for the properties to populate them. [View the specification here](https://sigmahq.io/sigma-specification/).
 
@@ -134,8 +129,8 @@ https://miro.com/app/board/uXjVKpPwTfA=/
 
 These are hardcoded and imported from our [stix4doge repository](https://github.com/muchdogesec/stix4doge). Specifically these objects;
 
-* Marking Definition: https://raw.githubusercontent.com/muchdogesec/stix4doge/main/objects/marking-definition/sigma2stix.json
-* Identity: https://raw.githubusercontent.com/muchdogesec/stix4doge/main/objects/identity/sigma2stix.json
+* Marking Definition: https://raw.githubusercontent.com/muchdogesec/stix4doge/main/objects/marking-definition/sigmahq2stix.json
+* Identity: https://raw.githubusercontent.com/muchdogesec/stix4doge/main/objects/identity/sigmahq2stix.json
 
 ### Indicators
 
@@ -384,7 +379,7 @@ To generate the id of SRO, a UUIDv5 is generated using the namespace `860f4c0f-8
 
 ### Bundle
 
-sigma2stix also creates a STIX 2.1 Bundle JSON object containing all the other STIX 2.1 Objects created at each run. The Bundle takes the format;
+sigmahq2stix also creates a STIX 2.1 Bundle JSON object containing all the other STIX 2.1 Objects created at each run. The Bundle takes the format;
 
 ```json
 {
@@ -416,7 +411,7 @@ If you only want the latest version bundle, just run the last line of `utilities
 
 ## Support
 
-[Minimal support provided via the DOGESEC community](https://community.dogesec.com/).
+[Minimal support provided via the dogesec community](https://community.dogesec.com/).
 
 ## License
 
