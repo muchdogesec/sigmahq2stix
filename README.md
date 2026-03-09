@@ -1,12 +1,12 @@
 # sigma2stix
 
+> **⚠️ ARCHIVED**: This repository is no longer actively maintained. All Sigma rules are now managed and available in [SIEM Rules](https://app.siemrules.com).
+
 [![codecov](https://codecov.io/gh/muchdogesec/sigma2stix/graph/badge.svg?token=YA10HK6Y1X)](https://codecov.io/gh/muchdogesec/sigma2stix)
 
 ## tl;dr
 
 A command line tool that converts Sigma Rules from the SigmaHQ repository into STIX 2.1 Objects.
-
-This repository also contains GitHub actions to upload the rules to SIEM Rules (also creating detection packs) and Cyber Threat Exchange (to a SigmaHQ feed)
 
 Note: if you just want to convert an existing Sigma Rule into STIX, [check out txt2detection](https://github.com/muchdogesec/txt2detection/).
 
